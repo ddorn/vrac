@@ -9,7 +9,6 @@ from pygame.locals import *
 
 from sparkles import Sparkle
 from utils import *
-from vec2 import Vec2
 
 
 SIZE = (1500, 800)
@@ -20,6 +19,8 @@ TOMMY_DENSITY = 3
 TOMMY_START = 200
 TOMMY_LIFE = 1000
 SHOT_DAMMAGE = 50
+IDLE_TIME = 2
+IDLE_SPEED_TRIGGER = 11
 
 LEFT = -1
 RIGHT = 1
@@ -30,8 +31,11 @@ WALL_BOTTOM = SIZE[1] - WALL_TOP
 
 pi2 = pi * 2
 
-def fireworks(pos):
-    hue = random() if random() < 0.95 else None
+def fireworks(pos, hue=None):
+
+    if hue is None:
+        hue = random() if random() < 0.95 else None
+
     for _ in range(100):
         yield Sparkle.fireworks(pos, hue)
 
@@ -40,6 +44,7 @@ class Entity:
     def __init__(self, pos):
         self.pos = Vec2(*pos)
         self.alive = True
+
 
 class Player(Entity):
     def __init__(self, pos, side, hue=0.1):
@@ -55,6 +60,11 @@ class Player(Entity):
         self.life_bar = LifeBar(self)
         self.shots = []
 
+        self.last_move = time()
+
+    def idle(self):
+        return time() - self.last_move > IDLE_TIME
+
     def jump(self, direction=None):
 
         if direction is None:
@@ -65,19 +75,21 @@ class Player(Entity):
         self.accel = self.going_up
         self.speed = 0
 
-    def fire(self):
-        self.shots.append(Shot(self.pos, -self.side * 20, self.hue, self.side))
+    def fire(self, mega=False):
+        self.shots.append(Shot(self.pos, -self.side * 20, self, mega))
 
-    def collide(self, shots):
-        for s in shots:
-            if self.pos.dist2(s.pos) < 30**2:
+    def collide(self, player2):
+        for s in player2.shots:
+            if self.pos.dist2(s.pos) < (25 + s.radius)**2:
                 yield from fireworks(s.pos)
-                self.life -= SHOT_DAMMAGE
+                self.life -= s.damage
+                # player2.life += SHOT_DAMMAGE
                 s.alive = False
 
     def update(self) -> List[Sparkle]:
         self.speed += self.accel
         self.pos.y += self.speed
+
 
         if self.pos.y <= WALL_TOP:
             self.pos.y = WALL_TOP
@@ -88,7 +100,10 @@ class Player(Entity):
             self.speed = 0
             self.accel = 0
 
-        if self.life < 0:
+        if abs(self.speed) > IDLE_SPEED_TRIGGER:
+            self.last_move = time()
+
+        if self.life <= 0:
             self.alive = False
             self.life = 0
 
@@ -110,8 +125,9 @@ class LifeBar:
 
     def update(self):
 
-        dist = SIZE[0] / 2 * self.player.life / TOMMY_LIFE
-        speed = gauss(15, 3)
+        dist = (SIZE[0] - 15) / 2 * self.player.life / TOMMY_LIFE
+        # speed_mu = max(5, 15*self.player.life / TOMMY_LIFE)
+        speed = gauss(15, 1)
         # computed so speed=0 when x=dist
         accel = speed ** 2 / (2*dist + speed)
 
@@ -157,29 +173,46 @@ class Enemy(Entity):
                 )
 
 class Shot(Entity):
-    def __init__(self, pos, speed, hue, player):
+    def __init__(self, pos, speed, player, mega=False):
         super().__init__(pos)
-        self.speed = speed
-        self.hue = hue
         self.player = player
+        self.mega = mega
+        self.speed = speed * (1 + 0.4*self.mega)
+        self.radius = 5 + 30 * mega
+        self.damage = SHOT_DAMMAGE * (1 + 2*mega)
 
     def update(self):
-        self.pos.x += self.speed
+        self.pos.x += self.speed 
 
         if self.pos.x < 0 or self.pos.x > SIZE[0]:
             self.alive = False
 
 
-        for i in range(2):
-            color = hsv_to_RGB(gauss(self.hue, 0.03), 1, 1)
-            yield Sparkle(
-                    self.pos,
-                    speed=gauss(1, 0.1),
-                    angle=gauss(pi * (self.player == LEFT), 0.6),
-                    accel=0.03,
-                    scale=10,
-                    color=color,
-                )
+        if self.mega:
+            for i in range(3):
+                color = hsv_to_RGB(gauss(self.player.hue-0.1, 0.05), 1, 1)
+                yield Sparkle(
+                        self.pos,
+                        speed=gauss(6, 0.2),
+                        accel=0.2,
+                        angle=uniform(0, pi2),
+                        angular_accel=0.3 * (random() < 0.5),
+                        color=color,
+                        gravity_angle=pi*(self.player.side == RIGHT),
+                        gravity=0.08,
+                    )
+
+        else:
+            for i in range(2):
+                color = hsv_to_RGB(gauss(self.player.hue, 0.03), 1, 1)
+                yield Sparkle(
+                        self.pos,
+                        speed=gauss(1, 0.1),
+                        angle=gauss(pi * (self.player == LEFT), 0.6),
+                        accel=0.03,
+                        scale=10,
+                        color=color,
+                    )
 
 
 def main():
@@ -202,20 +235,24 @@ def main():
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     done = True
+                elif event.key == K_r:
+                    player1 = Player((TOMMY_START, WALL_BOTTOM), LEFT, 0.1)
+                    player2 = Player((SIZE[0] - TOMMY_START, WALL_BOTTOM), RIGHT, 0.55)
+                    objects = [player1, player2]
 
                 elif event.key == K_s:
                     player1.jump(1)
                 elif event.key == K_w:
                     player1.jump(-1)
                 elif event.key == K_SPACE:
-                    player1.fire()
+                    player1.fire(player2.idle())
 
-                elif event.key == K_j:
-                    player2.jump(1)
-                elif event.key == K_k:
+                elif event.key == K_KP8:
                     player2.jump(-1)
+                elif event.key == K_KP5:
+                    player2.jump(1)
                 elif event.key == K_RETURN:
-                    player2.fire()
+                    player2.fire(player1.idle())
 
             elif event.type == MOUSEBUTTONDOWN:
                 mouse = pygame.mouse.get_pos()
@@ -235,14 +272,25 @@ def main():
             if not o.alive:
                 objects.remove(o)
 
-        sparkles.extend(player1.collide(player2.shots))
-        sparkles.extend(player2.collide(player1.shots))
 
 
         for s in sparkles[:]:
             s.update()
             if not s.alive:
                 sparkles.remove(s)
+
+        if player1.alive and player2.alive:
+            sparkles.extend(player1.collide(player2))
+            sparkles.extend(player2.collide(player1))
+        else:
+            # Game ended => Fireworks
+            winner = player1 if player1.alive else player2
+            looser = player1 if player2.alive else player1
+
+            if random() < 0.05:
+                sparkles.extend(
+                    fireworks((uniform(0, SIZE[0]), uniform(1, SIZE[1])), winner.hue)
+                )
 
         # Draw
         screen.fill(BG_COLOR)

@@ -21,6 +21,9 @@ class Sparkle:
         self.scale = scale
         self.radius = radius  # If set, radius is constant (overrides scale)
 
+    def __repr__(self):
+        return f"<Sparkle({self.pos}, speed={self.speed})>"
+
     def angle_towards(self, angle, rate):
         a = (self.angle - angle + pi) % pi2 - pi
         a *= (1 - rate)
@@ -42,6 +45,10 @@ class Sparkle:
             self.angle_towards(self.gravity_angle, self.gravity)
 
         if self.speed <= 0:
+            self.alive = False
+
+        if self.pos[0] < -50 or self.pos[0] > 10000 or self.pos[1] < -50 or self.pos[1] > 10000:
+            # Out of screen
             self.alive = False
 
     def draw(self, screen):

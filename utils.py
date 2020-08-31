@@ -29,6 +29,9 @@ class Vec2:
         self.x = x
         self.y = y
 
+    def __repr__(self):
+        return f"({self.x}, {self.y})"
+
     def __getitem__(self, index):
         if index:
             return self.y
