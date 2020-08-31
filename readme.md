@@ -16,6 +16,7 @@ is graphical, or mathematical/theoretic.
 
 Probably not up to date list of things here:
  - `sparkles.py`: a particle system inspired by [DaFluffyPtato](https://youtu.be/wNMRq_uoWM0)
+ - `tommy.py`: a simple 2 player game made only with particles, where you shoot at each other, with lots of colour
 
 ---
 DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
@@ -27,7 +28,7 @@ Everyone is permitted to copy and distribute verbatim or modified
 copies of this license document, and changing it is allowed as long
 as the name is changed.
 
-    DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+   DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
 TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
 
  0. You just DO WHAT THE FUCK YOU WANT TO.
