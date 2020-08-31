@@ -8,7 +8,7 @@ import pygame
 pi2 = 2*pi
 
 class Sparkle:
-    def __init__(self, pos, speed, angle, accel, angular_accel, color, gravity=0, gravity_angle=pi/2, scale=2):
+    def __init__(self, pos, speed, angle, accel=0.1, angular_accel=0, color=0xffa500, gravity=0, gravity_angle=pi/2, scale=2, radius=None):
         self.pos = pos
         self.speed = speed
         self.angle = angle
@@ -19,6 +19,7 @@ class Sparkle:
         self.gravity = gravity
         self.gravity_angle = gravity_angle
         self.scale = scale
+        self.radius = radius  # If set, radius is constant (overrides scale)
 
     def angle_towards(self, angle, rate):
         a = (self.angle - angle + pi) % pi2 - pi
@@ -43,8 +44,12 @@ class Sparkle:
         if self.speed <= 0:
             self.alive = False
 
-    def render(self, screen):
-        radius = self.scale * self.speed
+    def draw(self, screen):
+
+        if self.radius is not None:
+            radius = self.radius
+        else:
+            radius = self.scale * self.speed
 
         pygame.draw.circle(
                 screen,
@@ -117,14 +122,35 @@ class Sparkle:
                 scale=gauss(1, 0.1),
             )
 
+    @classmethod
+    def tommy(cls, pos, hue=0.1):
+        angle = uniform(0, pi2)
+        hue = gauss(hue, 0.02)
+        color = hsv_to_rgb(hue % 1, 1, 1)
+        color = [int(255*x) for x in color]
+
+        return Sparkle(
+                pos,
+                speed=gauss(8, 1),
+                accel=0.8,
+                angle=angle,
+                angular_accel=0,
+                color=color,
+                gravity=0.00,
+                gravity_angle=pi/2,
+                scale=gauss(3, 0.2),
+            )
 
 def main():
     SIZE = (1500, 800)
+    FPS = 60
+    BG_COLOR = 0x202324
+
     screen = pygame.display.set_mode(SIZE)
     clock = pygame.time.Clock()
 
-    kind = 0
-    kinds = [Sparkle.fire, Sparkle.swirl, Sparkle.fireworks]
+    kind = -1
+    kinds = [Sparkle.fire, Sparkle.swirl, Sparkle.fireworks, Sparkle.tommy]
 
     fireworks = True
     sparkles = []
@@ -159,9 +185,9 @@ def main():
                 hue = random() if random() < 0.95 else None
                 for _ in range(100):
                     sparkles.append(Sparkle.fireworks(pos, hue))
-        else:
-            for _ in range(3):
-                sparkles.append(kinds[kind](pygame.mouse.get_pos()))
+
+        for _ in range(3):
+            sparkles.append(kinds[kind](pygame.mouse.get_pos()))
 
 
 
@@ -171,12 +197,12 @@ def main():
                 sparkles.remove(sparkle)
 
         # Draw
-        screen.fill((0, 0, 0))
+        screen.fill(BG_COLOR)
         for sparkle in sparkles:
-            sparkle.render(screen)
+            sparkle.draw(screen)
 
         pygame.display.update()
-        clock.tick(60)
+        clock.tick(FPS)
 
 if __name__ == "__main__":
     main()
