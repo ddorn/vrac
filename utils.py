@@ -1,6 +1,7 @@
 # Lot of simple functions that I often use
 # And the Vec2 class
 
+from math import sqrt, atan, pi
 from colorsys import hsv_to_rgb
 
 
@@ -49,10 +50,44 @@ class Vec2:
         self.y += other[1]
         return self
 
+    def __sub__(self, other):
+        return Vec2(self.x - other[0], self.y - other[1])
+
     def __mul__(self, other):
         return Vec2(self.x * other, self.y * other)
 
     def dist2(self, other):
         """Return the square distance to an other point."""
         return (self.x - other[0]) ** 2 + (self.y - other[1]) ** 2
+
+    def norm2(self):
+        return self.x ** 2 + self.y**2
+
+    def norm(self):
+        return sqrt(self.x ** 2 + self.y ** 2)
+
+    def normalized(self):
+        return self * (1 / self.norm())
+
+    def perp(self):
+        """Return a orthogonormal vector."""
+        n = self.norm2() ** 0.5
+        return Vec2(self.y / n, -self.x / n)
+
+    def angle(self):
+        """Return the angle of the vector in radians."""
+
+        if self.x == 0:
+            if self.y > 0:
+                return pi/2
+            elif self.y < 0:
+                return -pi/2
+            else:
+                return 0
+
+        a = atan(self.y / self.x)
+        if self.x < 0:
+            a = a + pi
+
+        return a
 

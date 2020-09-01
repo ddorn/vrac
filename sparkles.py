@@ -4,6 +4,8 @@ from math import sin, cos, pi
 from colorsys import hsv_to_rgb, rgb_to_hsv
 
 import pygame
+from utils import *
+
 
 pi2 = 2*pi
 
@@ -148,6 +150,52 @@ class Sparkle:
                 scale=gauss(3, 0.2),
             )
 
+
+class Fountain:
+    def update(self):
+        yield from []
+
+
+class LambdaFountain:
+    """A Particle emitter that repeatedly call a function generating one particle"""
+
+    def __init__(self, func, density=1):
+        self.func = func
+        self.density = density
+
+    def update(self):
+        for i in range(self.density):
+            yield self.func()
+
+class LineFountain(Fountain):
+    """A particle emitter in straight line."""
+
+    def __init__(self, start, end, speed, hue, width):
+        """Sparkle Fountain between :start: and :end:."""
+        Fountain.__init__(self)
+
+        self.start = Vec2(*start)
+        self.end = Vec2(*end)
+        self.speed = speed
+        self.hue = hue
+        self.width = width
+
+    def update(self):
+        direc = self.end - self.start
+        start = self.start + direc.perp() * gauss(0, self.width/3)
+        accel = self.speed ** 2 / (2 * direc.norm() + self.speed)
+
+        yield Sparkle(
+                start,
+                speed=self.speed,
+                angle=direc.angle(),
+                accel=accel,
+                color=hsv_to_RGB(gauss(self.hue, 0.02), 1, 1),
+                scale=max(0, gauss(self.width/30, self.width / 200))
+            )
+
+
+
 def main():
     SIZE = (1500, 800)
     FPS = 60
@@ -161,6 +209,22 @@ def main():
 
     fireworks = True
     sparkles = []
+
+    segments = [
+            # W
+            ((317, 605), (103, 291)),
+            ((280, 630), (539, 204)),
+            ((544, 593), (363, 179)),
+            ((529, 602), (768, 165)),
+            # I
+            ((832, 598), (857, 277)),
+            # N
+            ((984, 595), (1030, 231)),
+            ((1016, 207), (1230, 607)),
+            ((1228, 632), (1364, 266)),
+        ]
+
+    fountains = [LineFountain(a, b, 10, 0.1, 50) for a, b in segments]
 
     done = False
     while not done:
@@ -182,6 +246,12 @@ def main():
                 mouse = pygame.mouse.get_pos()
                 for _ in range(100):
                     sparkles.append(Sparkle.fireworks(mouse))
+
+                if event.button == 1:
+                    print(mouse, ", ", end='')
+                else:
+                    print(mouse)
+
         kind %= len(kinds)
 
         # Logic
@@ -196,7 +266,8 @@ def main():
         for _ in range(3):
             sparkles.append(kinds[kind](pygame.mouse.get_pos()))
 
-
+        for f in fountains:
+            sparkles.extend(f.update())
 
         for sparkle in sparkles[:]:
             sparkle.update()

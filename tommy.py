@@ -2,12 +2,13 @@ from time import time
 from random import random, uniform, gauss
 from math import sin, cos, pi
 from colorsys import hsv_to_rgb, rgb_to_hsv
+from functools import partial
 from typing import List
 
 import pygame
 from pygame.locals import *
 
-from sparkles import Sparkle
+from sparkles import Sparkle, LineFountain, LambdaFountain
 from utils import *
 
 
@@ -19,8 +20,8 @@ TOMMY_DENSITY = 3
 TOMMY_START = 200
 TOMMY_LIFE = 1000
 SHOT_DAMMAGE = 50
-IDLE_TIME = 2
-IDLE_SPEED_TRIGGER = 11
+IDLE_TIME = 1.5
+IDLE_SPEED_TRIGGER = 13
 
 LEFT = -1
 RIGHT = 1
@@ -31,8 +32,8 @@ WALL_BOTTOM = SIZE[1] - WALL_TOP
 
 pi2 = pi * 2
 
-def fireworks(pos, hue=None):
 
+def fireworks(pos, hue=None):
     if hue is None:
         hue = random() if random() < 0.95 else None
 
@@ -117,9 +118,7 @@ class Player(Entity):
                 self.shots.remove(s)
 
 
-
 class LifeBar:
-
     def __init__(self, player):
         self.player = player
 
@@ -146,7 +145,6 @@ class LifeBar:
 
 
 class Enemy(Entity):
-
     def __init__(self, pos, hue, size):
         """Basic enemy."""
         super().__init__(pos)
@@ -171,6 +169,7 @@ class Enemy(Entity):
                     gravity_angle=0,
                     gravity=0.08,
                 )
+
 
 class Shot(Entity):
     def __init__(self, pos, speed, player, mega=False):
@@ -224,6 +223,10 @@ def main():
 
     objects = [player1, player2]
     sparkles = []
+
+
+    winner = None
+    looser = None
 
     done = False
     while not done:
@@ -283,14 +286,35 @@ def main():
             sparkles.extend(player1.collide(player2))
             sparkles.extend(player2.collide(player1))
         else:
-            # Game ended => Fireworks
-            winner = player1 if player1.alive else player2
-            looser = player1 if player2.alive else player1
+            if winner is None:
+                # Game just ended
+                winner = player1 if player1.alive else player2
+                looser = player1 if player2.alive else player2
+                segments = [
+                        # W
+                        ((317, 605), (103, 291)),
+                        ((280, 630), (539, 204)),
+                        ((544, 593), (363, 179)),
+                        ((529, 602), (768, 165)),
+                        # I
+                        ((832, 598), (857, 277)),
+                        # N
+                        ((984, 595), (1030, 231)),
+                        ((1016, 207), (1230, 607)),
+                        ((1228, 632), (1364, 266)),
+                    ]
+                win_fountains = [LineFountain(a, b, 10, winner.hue, 50) for a, b in segments]
+                win_fountains += [ LambdaFountain(partial(Sparkle.tommy, (873, 151), looser.hue), 3) ]
 
-            if random() < 0.05:
-                sparkles.extend(
-                    fireworks((uniform(0, SIZE[0]), uniform(1, SIZE[1])), winner.hue)
-                )
+            for f in win_fountains:
+                sparkles.extend(f.update())
+
+            # if random() < 0.05:
+            #     sparkles.extend(
+            #         fireworks((uniform(0, SIZE[0]), uniform(1, SIZE[1])), looser.hue)
+            #     )
+            if random() < 0.01:
+                sparkles.extend(fireworks((873, 151)))
 
         # Draw
         screen.fill(BG_COLOR)
@@ -300,6 +324,7 @@ def main():
 
         pygame.display.update()
         clock.tick(FPS)
+
 
 if __name__ == "__main__":
     main()
