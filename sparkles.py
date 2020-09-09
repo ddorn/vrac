@@ -6,11 +6,12 @@ from colorsys import hsv_to_rgb, rgb_to_hsv
 import pygame
 from utils import *
 
+pi2 = 2 * pi
 
-pi2 = 2*pi
 
 class Sparkle:
-    def __init__(self, pos, speed, angle, accel=0.1, angular_accel=0, color=0xffa500, gravity=0, gravity_angle=pi/2, scale=2, radius=None):
+    def __init__(self, pos, speed, angle, accel=0.1, angular_accel=0, color=0xffa500, gravity=0, gravity_angle=pi / 2,
+            scale=2, radius=None, vel_bias=(0,0)):
         self.pos = pos
         self.speed = speed
         self.angle = angle
@@ -22,6 +23,7 @@ class Sparkle:
         self.gravity_angle = gravity_angle
         self.scale = scale
         self.radius = radius  # If set, radius is constant (overrides scale)
+        self.vel_bias = vel_bias
 
     def __repr__(self):
         return f"<Sparkle({self.pos}, speed={self.speed})>"
@@ -30,18 +32,18 @@ class Sparkle:
         a = (self.angle - angle + pi) % pi2 - pi
         a *= (1 - rate)
 
-        self.angle = (a + angle ) % pi2
+        self.angle = (a + angle) % pi2
 
     def update(self, dt=1):
         self.pos = (
-                self.pos[0] + dt * self.speed * cos(self.angle),
-                self.pos[1] + dt * self.speed * sin(self.angle),  # - 7
-            )
+            self.pos[0] + dt * (self.speed * cos(self.angle) + self.vel_bias[0]),
+            self.pos[1] + dt * (self.speed * sin(self.angle) + self.vel_bias[1]),
+        )
 
         self.speed -= self.accel
 
         self.angle += self.angular_accel
-        self.angle %= 2*pi
+        self.angle %= 2 * pi
 
         if self.gravity:
             self.angle_towards(self.gravity_angle, self.gravity)
@@ -61,29 +63,29 @@ class Sparkle:
             radius = self.scale * self.speed
 
         pygame.draw.circle(
-                screen,
-                self.color,
-                (int(self.pos[0]), int(self.pos[1])),
-                int(radius),
-            )
+            screen,
+            self.color,
+            (int(self.pos[0]), int(self.pos[1])),
+            int(radius),
+        )
 
     @classmethod
     def fire(cls, pos):
-        angle = gauss(3*pi/2, pi/3)
+        angle = gauss(3 * pi / 2, pi / 3)
         hue = time() / 5 + angle / 50
         color = hsv_to_rgb(hue % 1, 1, 1)
-        color = [int(255*x) for x in color]
+        color = [int(255 * x) for x in color]
 
         return Sparkle(
-                pos,
-                speed=gauss(7, 2),
-                angle=angle,
-                accel=max(0, gauss(0.15, 0.03)),
-                angular_accel=0,
-                color=color,
-                gravity=0.10,
-                gravity_angle=-pi/2,
-            )
+            pos,
+            speed=gauss(7, 2),
+            angle=angle,
+            accel=max(0, gauss(0.15, 0.03)),
+            angular_accel=0,
+            color=color,
+            gravity=0.10,
+            gravity_angle=-pi / 2,
+        )
 
     @classmethod
     def swirl(cls, pos):
@@ -94,18 +96,18 @@ class Sparkle:
         sat = gauss(0.62, 0.06)
         val = gauss(0.32, 0.06)
         color = hsv_to_rgb(hue % 1, sat, val)
-        color = [int(255*x) for x in color]
+        color = [int(255 * x) for x in color]
 
         speed = gauss(7, 2)
 
         return Sparkle(
-                pos,
-                speed=speed,
-                angle=angle,
-                accel=0.15,
-                angular_accel=speed / 100,
-                color=color,
-            )
+            pos,
+            speed=speed,
+            angle=angle,
+            accel=0.15,
+            angular_accel=speed / 100,
+            color=color,
+        )
 
     @classmethod
     def fireworks(cls, pos, hue=None):
@@ -117,38 +119,38 @@ class Sparkle:
         else:
             hue = gauss(hue, 0.03)
         color = hsv_to_rgb(hue % 1, 1, 1)
-        color = [int(255*x) for x in color]
+        color = [int(255 * x) for x in color]
 
         return Sparkle(
-                pos,
-                speed=gauss(8, 1),
-                accel=0.1,
-                angle=angle,
-                angular_accel=0,
-                color=color,
-                gravity=0.00,
-                gravity_angle=pi/2,
-                scale=gauss(1, 0.1),
-            )
+            pos,
+            speed=gauss(8, 1),
+            accel=0.1,
+            angle=angle,
+            angular_accel=0,
+            color=color,
+            gravity=0.00,
+            gravity_angle=pi / 2,
+            scale=gauss(1, 0.1),
+        )
 
     @classmethod
     def tommy(cls, pos, hue=0.1):
         angle = uniform(0, pi2)
         hue = gauss(hue, 0.02)
         color = hsv_to_rgb(hue % 1, 1, 1)
-        color = [int(255*x) for x in color]
+        color = [int(255 * x) for x in color]
 
         return Sparkle(
-                pos,
-                speed=gauss(8, 1),
-                accel=0.8,
-                angle=angle,
-                angular_accel=0,
-                color=color,
-                gravity=0.00,
-                gravity_angle=pi/2,
-                scale=gauss(3, 0.2),
-            )
+            pos,
+            speed=gauss(8, 1),
+            accel=0.8,
+            angle=angle,
+            angular_accel=0,
+            color=color,
+            gravity=0.00,
+            gravity_angle=pi / 2,
+            scale=gauss(3, 0.2),
+        )
 
 
 class Fountain:
@@ -167,6 +169,7 @@ class LambdaFountain:
         for i in range(self.density):
             yield self.func()
 
+
 class LineFountain(Fountain):
     """A particle emitter in straight line."""
 
@@ -182,18 +185,17 @@ class LineFountain(Fountain):
 
     def update(self):
         direc = self.end - self.start
-        start = self.start + direc.perp() * gauss(0, self.width/3)
+        start = self.start + direc.perp() * gauss(0, self.width / 3)
         accel = self.speed ** 2 / (2 * direc.norm() + self.speed)
 
         yield Sparkle(
-                start,
-                speed=self.speed,
-                angle=direc.angle(),
-                accel=accel,
-                color=hsv_to_RGB(gauss(self.hue, 0.02), 1, 1),
-                scale=max(0, gauss(self.width/30, self.width / 200))
-            )
-
+            start,
+            speed=self.speed,
+            angle=direc.angle(),
+            accel=accel,
+            color=hsv_to_RGB(gauss(self.hue, 0.02), 1, 1),
+            scale=max(0, gauss(self.width / 30, self.width / 200))
+        )
 
 
 def main():
@@ -208,26 +210,29 @@ def main():
     kinds = [Sparkle.fire, Sparkle.swirl, Sparkle.fireworks, Sparkle.tommy]
 
     fireworks = True
-    sparkles = []
+    sparkles = set()
 
     segments = [
-            # W
-            ((317, 605), (103, 291)),
-            ((280, 630), (539, 204)),
-            ((544, 593), (363, 179)),
-            ((529, 602), (768, 165)),
-            # I
-            ((832, 598), (857, 277)),
-            # N
-            ((984, 595), (1030, 231)),
-            ((1016, 207), (1230, 607)),
-            ((1228, 632), (1364, 266)),
-        ]
+        # W
+        ((317, 605), (103, 291)),
+        ((280, 630), (539, 204)),
+        ((544, 593), (363, 179)),
+        ((529, 602), (768, 165)),
+        # I
+        ((832, 598), (857, 277)),
+        # N
+        ((984, 595), (1030, 231)),
+        ((1016, 207), (1230, 607)),
+        ((1228, 632), (1364, 266)),
+    ]
 
     fountains = [LineFountain(a, b, 10, 0.1, 50) for a, b in segments]
 
+    frame = 0
+    start = time()
     done = False
     while not done:
+        frame += 1
 
         # Input
         for event in pygame.event.get():
@@ -245,7 +250,7 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse = pygame.mouse.get_pos()
                 for _ in range(100):
-                    sparkles.append(Sparkle.fireworks(mouse))
+                    sparkles.add(Sparkle.fireworks(mouse))
 
                 if event.button == 1:
                     print(mouse, ", ", end='')
@@ -257,22 +262,24 @@ def main():
         # Logic
 
         if fireworks:
-            if random() > 0.95:
+            if random() > 0.2:
                 pos = random() * SIZE[0], random() * SIZE[1]
                 hue = random() if random() < 0.95 else None
                 for _ in range(100):
-                    sparkles.append(Sparkle.fireworks(pos, hue))
+                    sparkles.add(Sparkle.fireworks(pos, hue))
 
         for _ in range(3):
-            sparkles.append(kinds[kind](pygame.mouse.get_pos()))
+            sparkles.add(kinds[kind](pygame.mouse.get_pos()))
 
         for f in fountains:
-            sparkles.extend(f.update())
+            sparkles.update(f.update())
 
-        for sparkle in sparkles[:]:
-            sparkle.update()
-            if not sparkle.alive:
-                sparkles.remove(sparkle)
+        to_remove = set()
+        for s in sparkles:
+            s.update()
+            if not s.alive:
+                to_remove.add(s)
+        sparkles.difference_update(to_remove)
 
         # Draw
         screen.fill(BG_COLOR)
@@ -281,6 +288,13 @@ def main():
 
         pygame.display.update()
         clock.tick(FPS)
+
+        if frame > 60 * 10:
+            break
+
+    duration = time() - start
+    print(f"Duration: {duration}, FPS: {frame / duration}")
+
 
 if __name__ == "__main__":
     main()

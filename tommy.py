@@ -18,10 +18,10 @@ BG_COLOR = 0x202324
 
 TOMMY_DENSITY = 3
 TOMMY_START = 200
-TOMMY_LIFE = 1000
+TOMMY_LIFE = 2000
 SHOT_DAMMAGE = 50
 IDLE_TIME = 1.5
-IDLE_SPEED_TRIGGER = 13
+IDLE_SPEED_TRIGGER = 16
 
 LEFT = -1
 RIGHT = 1
@@ -54,7 +54,7 @@ class Player(Entity):
         self.hue = hue
         self.speed = 0
         self.accel = 0
-        self.life = TOMMY_LIFE
+        self.life = TOMMY_LIFE  # * (1 + (side==RIGHT))  # because my brother is not good enough :P
 
         self.going_up = 1
 
@@ -177,7 +177,7 @@ class Shot(Entity):
         self.player = player
         self.mega = mega
         self.speed = speed * (1 + 0.4*self.mega)
-        self.radius = 5 + 30 * mega
+        self.radius = 5 + 45 * mega
         self.damage = SHOT_DAMMAGE * (1 + 2*mega)
 
     def update(self):
@@ -188,17 +188,19 @@ class Shot(Entity):
 
 
         if self.mega:
+            side = self.player.side
             for i in range(3):
                 color = hsv_to_RGB(gauss(self.player.hue-0.1, 0.05), 1, 1)
                 yield Sparkle(
                         self.pos,
-                        speed=gauss(6, 0.2),
-                        accel=0.2,
+                        speed=gauss(8, 0.2),
+                        accel=0.21,
                         angle=uniform(0, pi2),
-                        angular_accel=0.3 * (random() < 0.5),
+                        angular_accel=0.2 * side,
                         color=color,
-                        gravity_angle=pi*(self.player.side == RIGHT),
-                        gravity=0.08,
+                        gravity_angle=pi*(side == RIGHT),
+                        gravity=0.00,
+                        vel_bias=((-15*side, 0)),
                     )
 
         else:
@@ -222,8 +224,8 @@ def main():
     player2 = Player((SIZE[0] - TOMMY_START, WALL_BOTTOM), RIGHT, 0.55)
 
     objects = [player1, player2]
-    sparkles = []
-
+    win_fountains = []
+    sparkles = set()
 
     winner = None
     looser = None
@@ -242,6 +244,7 @@ def main():
                     player1 = Player((TOMMY_START, WALL_BOTTOM), LEFT, 0.1)
                     player2 = Player((SIZE[0] - TOMMY_START, WALL_BOTTOM), RIGHT, 0.55)
                     objects = [player1, player2]
+                    winner = looser = None
 
                 elif event.key == K_s:
                     player1.jump(1)
@@ -263,6 +266,12 @@ def main():
 
         # Logic
         # Spawn enemies
+        if False:
+            if random() < 10/FPS:
+                player2.fire(player1.idle())
+            if random() < 3/FPS:
+                player2.jump()
+
         if random() < 1/FPS and False:
             objects.append(Enemy(
                     (SIZE[0] + 10, uniform(WALL_TOP, WALL_BOTTOM)),
@@ -271,20 +280,21 @@ def main():
                 ))
 
         for o in objects[:]:
-            sparkles.extend(o.update())
+            sparkles.update(o.update())
             if not o.alive:
                 objects.remove(o)
 
-
-
-        for s in sparkles[:]:
+        to_remove = set()
+        for s in sparkles:
             s.update()
             if not s.alive:
-                sparkles.remove(s)
+                to_remove.add(s)
+        sparkles.difference_update(to_remove)
+
 
         if player1.alive and player2.alive:
-            sparkles.extend(player1.collide(player2))
-            sparkles.extend(player2.collide(player1))
+            sparkles.update(player1.collide(player2))
+            sparkles.update(player2.collide(player1))
         else:
             if winner is None:
                 # Game just ended
@@ -307,14 +317,14 @@ def main():
                 win_fountains += [ LambdaFountain(partial(Sparkle.tommy, (873, 151), looser.hue), 3) ]
 
             for f in win_fountains:
-                sparkles.extend(f.update())
+                sparkles.update(f.update())
 
             # if random() < 0.05:
             #     sparkles.extend(
             #         fireworks((uniform(0, SIZE[0]), uniform(1, SIZE[1])), looser.hue)
             #     )
-            if random() < 0.01:
-                sparkles.extend(fireworks((873, 151)))
+            if random() < 0.03:
+                sparkles.update(fireworks((873, 151)))
 
         # Draw
         screen.fill(BG_COLOR)
