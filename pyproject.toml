@@ -5,7 +5,7 @@ description = ""
 authors = ["ddorn <diego.dorn@free.fr>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 pygame = "^1.9.6"
 
 [tool.poetry.dev-dependencies]

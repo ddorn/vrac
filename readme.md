@@ -17,6 +17,7 @@ is graphical, or mathematical/theoretic.
 Probably not up to date list of things here:
  - `sparkles.py`: a particle system inspired by [DaFluffyPtato](https://youtu.be/wNMRq_uoWM0)
  - `tommy.py`: a simple 2 player game made only with particles, where you shoot at each other, with lots of colour
+ - `editor.py`: an ongoing experiment to create an map editor with objects that have arguments without boilerplate code.
 
 ---
 DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE

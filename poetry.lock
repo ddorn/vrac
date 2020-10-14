@@ -7,8 +7,8 @@ python-versions = "*"
 version = "1.9.6"
 
 [metadata]
-content-hash = "4c6a4c3accb6a93aac942c8ce1dad806d81679eea3a7b32c030abe9a5c730a9c"
-python-versions = "^3.7"
+content-hash = "c1fd66cf60f07a1e35a14646121a6bb37beba31b8c2c9ff306aa351b42e8cc45"
+python-versions = "3.8"
 
 [metadata.files]
 pygame = [
