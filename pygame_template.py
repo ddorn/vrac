@@ -1,9 +1,13 @@
+#!/usr/bin/env python
+
 from time import time
 from random import random, uniform, gauss
-from math import sin, cos, pi
+from math import sin, cos, pi, sqrt
 from colorsys import hsv_to_rgb, rgb_to_hsv
 
 import pygame
+from pygame import Vector2 as Vec2
+import pygame.gfxdraw as gfx
 from pygame.locals import *
 
 
@@ -34,9 +38,14 @@ def main():
                 print(mouse, "button:", event.button)
 
         # Logic
+        for obj in objects:
+            obj.logic()
 
         # Draw
         screen.fill(BG_COLOR)
+
+        for obj in objects:
+            obj.draw(screen)
 
         pygame.display.update()
         clock.tick(FPS)
