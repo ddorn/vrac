@@ -32,6 +32,7 @@ COLORS = [
     (117, 113, 94),
 ]
 
+
 def clamp(x, mini, maxi):
     if x < mini:
         return mini
@@ -39,9 +40,10 @@ def clamp(x, mini, maxi):
         return maxi
     return x
 
+
 def d(a, b=(0, 0)):
     """Return the distance between two points or the norm of one vector."""
-    return sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2)
+    return sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
 
 
 def align_horiz(*widgets: Widget, start=0, interval=2):
@@ -49,6 +51,7 @@ def align_horiz(*widgets: Widget, start=0, interval=2):
         w.pos = (start, w.y)
         start += w.shape.width + interval
     return list(widgets)
+
 
 class Graph:
     def __init__(self):
@@ -65,7 +68,7 @@ class Graph:
         self.edge_strength = 1
 
     def __getitem__(self, vertex):
-        x, y =  self.points[vertex]
+        x, y = self.points[vertex]
         return int(x), int(y)
 
     def __iter__(self):
@@ -83,10 +86,10 @@ class Graph:
         del self.neightbours[vertex]
 
         self.edges = {
-                (u - (u > vertex), v - (v > vertex))
-                for u, v in self.edges
-                if u != vertex and v != vertex
-            }
+            (u - (u > vertex), v - (v > vertex))
+            for u, v in self.edges
+            if u != vertex and v != vertex
+        }
 
         self.update_neighbours()
 
@@ -105,7 +108,6 @@ class Graph:
             self.add_edge(closest, len(self.points) - 1)
         else:
             self.neightbours.append(set())
-
 
     def add_edge(self, idx, idy):
         assert 0 <= idx < len(self.points)
@@ -144,7 +146,7 @@ class Graph:
 
     def update_neighbours(self):
         self.neightbours = [
-            { x for x in range(len(self)) if self.has_edge(x, p) }
+            {x for x in range(len(self)) if self.has_edge(x, p)}
             for p in range(len(self))
         ]
 
@@ -179,7 +181,7 @@ class Graph:
             elif pygame.key.get_mods() & KMOD_SHIFT:
                 closest = min(
                     [p for p in range(len(self))
-                     if p!=self.selected and not self.has_edge(p, self.selected)],
+                     if p != self.selected and not self.has_edge(p, self.selected)],
                     key=lambda x: d(self[x], self[self.selected]),
                     default=None
                 )
@@ -199,32 +201,38 @@ class Graph:
         self.selected = self.points.index(pos)
 
     def logic(self):
-        if self.physics:
-            forces = defaultdict(Vec2)
-            for i, p in enumerate(self.points):
-                for dj, p2 in enumerate(self.points[i+1:]):
-                    j = i + dj + 1
-                    d = Vec2(p2) - p  # Vector i->j
-                    l = d.length()
-                    if (i, j) in self.edges:
-                        forces[i] += d * l * self.edge_strength / 100
-                        forces[j] -= d * l * self.edge_strength / 100
+        if not self.physics:
+            return
 
-                    forces[i] -= (200 / l)**2 * d
-                    forces[j] += (200 / l)**2 * d
+        forces = defaultdict(Vec2)
+        for i, p in enumerate(self.points):
+            for dj, p2 in enumerate(self.points[i + 1:]):
+                j = i + dj + 1
+                d = Vec2(p2) - p  # Vector i->j
+                l = d.length()
+                if (i, j) in self.edges:
+                    forces[i] += d * self.edge_strength
+                    forces[j] -= d * self.edge_strength
 
-            for i, p in enumerate(self.points):
-                df = forces[i] / 30
-                df.x = clamp(df.x, -4, 4)
-                df.y = clamp(df.y, -4, 4)
-                self.points[i] += df
+                forces[i] -= (200 / l) ** 3 * d
+                forces[j] += (200 / l) ** 3 * d
+
+        # Gravity, attract nodes towards the center of the screen
+        for i, p in enumerate(self.points):
+            forces[i] += Vec2(SIZE) / 2 - p
+
+        for i, p in enumerate(self.points):
+            df = forces[i] / 30
+            df.x = clamp(df.x, -4, 4)
+            df.y = clamp(df.y, -4, 4)
+            self.points[i] += df
 
     def shake(self):
         """Move randomly the vertices to untangle the graph."""
 
         for p in self.points:
             pert = Vec2()
-            pert.from_polar((gauss(30, 5), uniform(0, 360)))  #wtf this api
+            pert.from_polar((gauss(50, 10), uniform(0, 360)))  # wtf this api
             p += pert
 
     def draw(self, display):
@@ -304,9 +312,17 @@ class Graph:
         self.edges = set()
         self.selected = None
 
+    def shuffle(self):
+        self.points = [
+            (uniform(0, SIZE[0]), uniform(0, SIZE[1]))
+            for _ in self.points
+        ]
+
+
 SIZE = (1500, 800)
 FPS = 30
 BG_COLOR = 0x202324
+
 
 def main():
     pygame.init()
@@ -317,12 +333,14 @@ def main():
     g = Graph()
     objects = [g]
 
-    button = lambda txt, func, color: Button(txt, func, (10, 10), RoundedRect(border=1, padding=6), color=COLORS[color], bg_color=(69, 69, 69), border_color=COLORS[color])
+    button = lambda txt, func, color: Button(txt, func, (10, 10), RoundedRect(border=1, padding=6), color=COLORS[color],
+                                             bg_color=(69, 69, 69), border_color=COLORS[color])
     widgets = WidgetList(align_horiz(
         button("Copy Tikz", g.tikz, 0),
         button("Toggle physics", g.toggle_physics, 1),
         button("Clean invisible", g.clean_exterior, 2),
         button("Empty graph", g.clean, 3),
+        button("Shuffle", g.shuffle, 4),
         start=10,
         interval=10,
     ))
@@ -363,7 +381,6 @@ def main():
             elif event.type == MOUSEMOTION:
                 g.mouse_move(event)
 
-
         # Logic
         for obj in objects:
             obj.logic()
@@ -376,6 +393,7 @@ def main():
         widgets.render(screen)
 
         pygame.display.update()
+
 
 if __name__ == "__main__":
     main()
