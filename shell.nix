@@ -24,16 +24,20 @@ let
   };
 
   customPython = pkgs.python38.buildEnv.override {
-    extraLibs = with pkgs.python38Packages; [ 
+    extraLibs = with pkgs.python38Packages; [
       pygame
       click
       ptpython
       pygamegui
       pillow
+      numpy
       graphalama
     ];
   };
 in
-mkShell {
-  buildInputs = [ customPython ];
-}
+  mkShell {
+    buildInputs = [
+      customPython
+      xdotool
+    ];
+  }
