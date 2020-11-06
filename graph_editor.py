@@ -67,6 +67,8 @@ class Graph:
         self.physics = False
         self.edge_strength = 1
 
+        self.font = pygame.font.SysFont("", 30)
+
     def __getitem__(self, vertex):
         x, y = self.points[vertex]
         return int(x), int(y)
@@ -264,6 +266,21 @@ class Graph:
             height = 30 if i == self.current_color else 10
             rect = (i * width, SIZE[1] - height, width, height)
             display.fill(c, rect)
+
+        # Draw text info
+        p = len(self)
+        q = len(self.edges)
+        p_text = self.font.render(f"p = {p}", True, WHITESMOKE)
+        p_rect = p_text.get_rect(topright=(SIZE[0] - 10, 10))
+        display.blit(p_text, p_rect)
+
+        r_text = self.font.render(f"q = {q}", True, WHITESMOKE)
+        r_rect = r_text.get_rect(topright=(SIZE[0] - 10, p_rect.bottom + 10))
+        display.blit(r_text, r_rect)
+
+        f_text = self.font.render(f"f = 2 - p + q= {2 - p + q}", True, WHITESMOKE)
+        f_rect = f_text.get_rect(topright=(SIZE[0] - 10, r_rect.bottom + 10))
+        display.blit(f_text, f_rect)
 
     def color_of(self, vertex):
         return COLORS[self.vertex_colors[vertex]]
