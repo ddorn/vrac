@@ -20,6 +20,7 @@ Probably not up to date list of things here:
  - `editor.py`: an ongoing experiment to create an map editor with objects that have arguments without boilerplate code.
  - `graph_editor.py`: a graph drawing program to help solve my graph theory exams. It has physics for untangling graphs and latex code generation.
  - `weierstrass.py`: an exploration of fractal distances (mostly plots to find non-connected or non-simply connected topological balls)
+ - `mandelbrot_iteration.py`: tool to visualise the sequences in the Mandelbrot set
 
 ---
 DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
