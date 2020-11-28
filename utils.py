@@ -17,6 +17,54 @@ def hsv_to_RGB(hue, sat, val):
     color = hsv_to_rgb(hue % 1, sat, val)
     return [int(255*x) for x in color]
 
+
+def int_to_rgb(col: int):
+    b = col & 0xff
+    g = col >> 8 & 0xff
+    r = col >> 16 & 0xff
+    return r, g, b
+
+def contrast(col):
+    if isinstance(col, int):
+        col = int_to_rgb(col)
+
+    if sum(col) / 3 > 0x80:
+        return 0x000000
+    else:
+        return 0xffffff
+
+
+def fmt(s, fg=None, bg=None, reset=True):
+    """
+    Add ANSI escape codes to a string.
+
+    [fg] and [bg] can either be an rgb tuple of integers
+        or an index into COLORS.
+
+    If [reset] is False, the colors and any ANSI flags are not cleared.
+    """
+
+    flags = ""
+
+    if fg is not None:
+        if isinstance(fg, int):
+            r, g, b = int_to_rgb(fg)
+        else:
+            r, g, b = fg
+        flags += f"38;2;{r};{g};{b};"
+
+    if bg is not None:
+        if isinstance(bg, int):
+            r, g, b = int_to_rgb(bg)
+        else:
+            r, g, b = bg
+        flags += f"48;2;{r};{g};{b};"
+
+    flags = flags.strip(";")
+
+    return "\033[" + flags + "m" + s + "\033[m"
+
+
 # Classes
 
 class Vec2:

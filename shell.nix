@@ -31,7 +31,11 @@ let
       pygamegui
       pillow
       numpy
+      numba
+      pip
+      setuptools
       graphalama
+      matplotlib
     ];
   };
 in

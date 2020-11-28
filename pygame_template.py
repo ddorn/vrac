@@ -4,6 +4,7 @@ from time import time
 from random import random, uniform, gauss
 from math import sin, cos, pi, sqrt
 from colorsys import hsv_to_rgb, rgb_to_hsv
+from pathlib import Path
 
 import pygame
 from pygame import Vector2 as Vec2
@@ -14,9 +15,12 @@ from pygame.locals import *
 SIZE = (1500, 800)
 FPS = 60
 BG_COLOR = 0x202324
+CAPTION = Path(__file__).absolute().as_posix()
+
 
 def main():
     screen = pygame.display.set_mode(SIZE)
+    pygame.display.set_caption(CAPTION)
     clock = pygame.time.Clock()
 
     objects = []
