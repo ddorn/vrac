@@ -21,6 +21,7 @@ Probably not up to date list of things here:
  - `graph_editor.py`: a graph drawing program to help solve my graph theory exams. It has physics for untangling graphs and latex code generation.
  - `weierstrass.py`: an exploration of fractal distances (mostly plots to find non-connected or non-simply connected topological balls)
  - `mandelbrot_iteration.py`: tool to visualise the sequences in the Mandelbrot set
+ - `lampadophore.py`: a generator of random words / sentences for a corpus
 
 ---
 DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
