@@ -5,6 +5,8 @@ from pprint import pprint
 from pathlib import Path
 from collections import defaultdict, Counter
 
+import click
+
 DATA = Path(__file__).parent / "data"
 FR_FREQ_WORD_FILE = DATA / "fr-freq-words"
 ALSA_RAW = DATA / "villages-alsaciens.txt"
@@ -44,29 +46,26 @@ def get_depth(occ):
     return 1 + get_depth(occ[next(iter(occ))])
 
 
-def preproc_freq_words(path):
+def preproc_freq_words(file_, depth=2):
     # occ[first token][second token][third token] = prob of 3rd token after 1st and 2nd
-    occ = empty_occ()
-    text = path.read_text()
-    lines = text.splitlines()
-    for line in lines:
+    occ = empty_occ(depth)
+    for line in file_:
         count, _, word = line.partition(" ")
         count = float(count)
-
+        word = word.strip()
         for c in word:
-            if 0xa0 > ord(c) > ord("z"):
-                break
-            if SEP in word:
-                print(word)
-                break
-            if not c.isalpha() and not c in "-'":
-                print(word)
+            if 0xa0 > ord(c) > ord("z") \
+                or SEP in word \
+                or not c.isalpha() and not c in "-'":
+                print("×", word)
                 break
         else:
-            a = b = " "
+            w = [" "] * depth
             for c in word.lower() + " ":
-                occ[a][b][c] += count
-                a, b = b, c
+                probas = get(occ, *w)
+                probas[c] += count
+                w.pop(0)
+                w.append(c)
 
     return occ
 
@@ -75,28 +74,24 @@ def preproc_prov(path):
     occ = empty_occ(1)
 
 
+def save_occ(occ, file, *_prefix):
+    """Save a multi-dimensional occurence table to an open file."""
 
-def save_occ(occ, path):
-    """Save a multi-dimensional occurence table to a file."""
-    with open(path, "w") as f:
-        _save_occ(occ, f)
-
-def _save_occ(occ, f, *prefix):
-    """Recursive helper function to write to the file."""
     for token, oc in occ.items():
         if isinstance(oc, float):
-            print(*prefix, token, oc, file=f, sep=SEP)
+            print(*_prefix, token, oc, file=file, sep=SEP)
         else:
-            _save_occ(oc, f, *prefix, token)
+            save_occ(oc, file, *_prefix, token)
 
 
-def load_preproc(path):
-    """Load a occurence table from a file."""
-    lines = path.read_text().splitlines()
-    depth = lines[0].count("#") - 1
+def load_preproc(file):
+    """Load a occurence table from an open file."""
+    depth = file.readline().count("#") - 1
+    file.seek(0)
+
     occ = empty_occ(depth)
-    for line in lines:
-        *prefix, freq = line.split(SEP)
+    for line in file:
+        *prefix, freq = line.strip("\n").split(SEP)
         freq = float(freq)
         set(occ, freq, *prefix)
 
@@ -123,15 +118,37 @@ def gen(occ):
     return word
 
 
-def main():
-    occ = preproc_freq_words(ALSA_RAW)
-    save_occ(occ, PROC_ALSA)
+
+@click.group()
+def cli():
+    pass
 
 
-    o = load_preproc(PROC_ALSA)
-    w = gen(occ)
-    print("".join(w))
+@cli.command()
+@click.argument("input", type=click.File("r"))
+@click.argument("output", type=click.File("w"))
+@click.option("-d", "--depth", default=2)
+def proc(input, output, depth):
+    """Process a file with word frequencies for the generate command.
+
+    Each line must be in the format 'FREQUENCY WORD'.
+    The frequency the ponderation for a given word."""
+
+    occ = preproc_freq_words(input, depth)
+    save_occ(occ, output)
+
+
+@cli.command("gen")
+@click.argument("probas", type=click.File("r"))
+@click.option("-n", "--count", default=1, help="Number of words to generate")
+def gen_cmd(probas, count):
+    """Generate random words/sentences from a proc file."""
+
+    occ = load_preproc(probas)
+    for i in range(count):
+        w = gen(occ)
+        print("".join(w).title())
 
 
 if __name__ == "__main__":
-    main()
+    cli()
