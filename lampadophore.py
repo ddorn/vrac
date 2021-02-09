@@ -16,42 +16,172 @@ SEP = "#"
 EMPTY = "%"
 
 
-def empty_occ(depth=2):
-    def r(d):
-        return (lambda: defaultdict(d))
-    d = float
-    for i in range(depth):
-        d = r(d)
-    return defaultdict(d)
+class Occurences:
+    def __init__(self, depth=2):
+        self.depth = depth
+        self.occ = self._empty(depth)
+
+    def __str__(self):
+        return self._str(self.occ, 0)
+
+    def _str(self,  occ, depth):
+        s = ""
+        for k, v in occ.items():
+            s += "\t"*depth + k 
+            if isinstance(v, (float, int)):
+                s += f" {v}\n"
+            else:
+                s += "\n" + self._str(v, depth+1)
+        return s
+
+    @staticmethod
+    def _empty(depth):
+        def r(d):
+            return (lambda: defaultdict(d))
+        d = float
+        for i in range(depth):
+            d = r(d)
+        return defaultdict(d)
+
+    def __getitem__(self, key):
+        """Get the value in the occurence table recursively"""
+        occ = self.occ
+        for i in key:
+            occ = occ[i]
+        return occ
+
+    def __setitem__(self, key, value):
+        """Set a value in the occurence table recursively"""
+        if len(key) == 1:
+            self.occ[key[0]] = value
+            return
+
+        *rest, last = key
+        d = self[rest]
+        d[last] = value
+
+    def __delitem__(self, key):
+        if len(key) == 1:
+            del self.occ[key[0]]
+        else:
+            *start, last = key
+            del self[start][last]
+            all_empty = True
+            for i in range(len(start), 1, -1):
+                s = key[:i]
+                if all_empty and len(self[s]) == 0:
+                    *a, b = s
+                    del self[a][b]
+                else:
+                    all_empty = False
+            if all_empty and len(self[key[0],]) == 0:
+                del self.occ[key[0]]
+
+    def __iter__(self):
+        return self._iter(self.occ)
+
+    @staticmethod
+    def _iter(occ, *start):
+        if isinstance(occ, (float, int)):
+            yield start
+        else:
+            for k, v in occ.items():
+                yield from Occurences._iter(v, *start, k)
+
+    def bifurcations(self, _occ=None):
+        if _occ is None:
+            _occ = self.occ
+        if isinstance(_occ[next(iter(_occ))], float):  # depth 0
+            return len(_occ) - 1
+        else:
+            return sum(self.bifurcations(o) for o in _occ.values())
 
 
-def get(occ, *indices):
-    """Get the value in the occurence table recursively"""
-    for i in indices:
-        occ = occ[i]
-    return occ
+    def save(self, file):
+        """Save a multi-dimensional occurence table to an open file.
 
-def set(occ, value, *indices):
-    """Set a value in the occurence table recursively"""
-    if len(indices) == 1:
-        occ[indices[0]] = value
-        return
+        Return the number of lines written."""
 
-    *rest, last = indices
-    d = get(occ, *rest)
-    d[last] = value
+        lines = 0
+        for oc in self:
+            print(*oc, self[oc], file=file, sep=SEP)
+            lines += 1
 
-def get_depth(occ):
-    if isinstance(occ, float):
-        return -1
-    return 1 + get_depth(occ[next(iter(occ))])
+        return lines
 
+    @classmethod
+    def from_expressions(cls, expressions, depth=2):
+        """Create an occ from a list of pair (count, expr)."""
 
-def bifurcations(occ):
-    if isinstance(occ[next(iter(occ))], float):  # depth 0
-        return len(occ) - 1
-    else:
-        return sum(bifurcations(o) for o in occ.values())
+        occ = cls(depth)
+        for count, expr in expressions:
+            w = [EMPTY] * depth
+            for c in expr:
+                occ[w][c] += count
+                w.pop(0)
+                w.append(c)
+            # End of word
+            occ[w][EMPTY] += count
+
+        # Remove all expression that did not create branches
+
+        for count, expr in expressions:
+            w = [EMPTY] * depth
+            path = [w[:]]
+            for i, c in enumerate(expr):
+                w.pop(0)
+                w.append(c)
+                path.append(w[:])
+                if len(occ[w]) > 1 and i >= depth:
+                    break
+            else:
+                for i, w in enumerate(path):
+                    c = next(iter(occ[w]))
+                    occ[w][c] -= count
+
+        to_remove = []
+        for k in occ:
+            if occ[k] < 0.00001:
+                to_remove.append(k)
+        for k in to_remove:
+            del occ[k]
+
+        return occ
+
+    @classmethod
+    def load(cls, file):
+        """Load a occurence table from an open file."""
+        depth = file.readline().count("#") - 1
+        file.seek(0)
+
+        occ = cls(depth)
+        for line in file:
+            *prefix, freq = line.strip("\n").split(SEP)
+            occ[prefix] = float(freq)
+
+        return occ
+
+    def gen(self):
+        word = [EMPTY] * self.depth
+        while word[-1] != EMPTY or len(word) == self.depth:
+            probas = self[word[-self.depth:]]
+            occ_total = sum(probas.values())
+            occ_cum = 0
+            cutoff = random.random() * occ_total
+            for w, p in probas.items():
+                occ_cum += p
+                if occ_cum >= cutoff:
+                    word.append(w)
+                    break
+
+        word = word[self.depth:-1]  # Remove the EMPTYs
+
+        if all(len(t) == 1 for t in word):
+            sep = ""
+        else:
+            sep = " "
+        return sep.join(word).capitalize()
+
 
 def valid_word(word):
     for c in word:
@@ -62,32 +192,15 @@ def valid_word(word):
     return True
 
 
-def preproc(expressions, depth=2):
-    # occ[first token][second token][third token] = prob of 3rd token after 1st and 2nd
-    occ = empty_occ(depth)
-    for count, expr in expressions:
-        w = [EMPTY] * depth
-        for c in expr:
-            probas = get(occ, *w)
-            probas[c] += count
-            w.pop(0)
-            w.append(c)
-        # End of word
-        probas = get(occ, *w)
-        probas[EMPTY] += count
-
-    return occ
-
-
-
 def preproc_words(file_, depth=2, verbose=False):
-    # occ[first token][second token][third token] = prob of 3rd token after 1st and 2nd
+    """Create an OCC from a file with 'count word' on each line."""
+
     ignored = 0
     expressions = []
     for line in file_:
         count, _, word = line.partition(" ")
         count = float(count)
-        word = word.strip()
+        word = word.strip().lower()
         if valid_word(word):
             expressions.append((count, word))
         else:
@@ -97,16 +210,18 @@ def preproc_words(file_, depth=2, verbose=False):
 
     print("Ignored:", ignored)
     print("Used:", len(expressions))
-    return preproc(expressions, depth)
+    return Occurences.from_expressions(expressions, depth)
 
 
 def preproc_sentences(file_, depth, verbose=False):
+    """Create an OCC from a file with 'count sentence' on each line."""
+
     ignored = 0
     expressions = []
     for line in file_:
         count, _, sentence = line.partition(" ")
         count = float(count)
-        words = sentence.strip().split()
+        words = sentence.lower().strip().split()
         for word in words:
             if not valid_word(word):
                 ignored += 1
@@ -118,58 +233,7 @@ def preproc_sentences(file_, depth, verbose=False):
 
     print("Ignored:", ignored)
     print("Used:", len(expressions))
-    return preproc(expressions, depth)
-
-
-def save_occ(occ, file, *_prefix):
-    """Save a multi-dimensional occurence table to an open file.
-
-    Return the number of lines written."""
-
-    lines = 0
-    for token, oc in occ.items():
-        if isinstance(oc, float):
-            print(*_prefix, token, oc, file=file, sep=SEP)
-            lines += 1
-        else:
-            lines += save_occ(oc, file, *_prefix, token)
-
-    return lines
-
-
-def load_preproc(file):
-    """Load a occurence table from an open file."""
-    depth = file.readline().count("#") - 1
-    file.seek(0)
-
-    occ = empty_occ(depth)
-    for line in file:
-        *prefix, freq = line.strip("\n").split(SEP)
-        freq = float(freq)
-        set(occ, freq, *prefix)
-
-    return occ
-
-
-def gen(occ):
-    depth = get_depth(occ)
-
-    word = [EMPTY] * depth
-    while word[-1] != EMPTY or len(word) == depth:
-        probas = get(occ, *word[-depth:])
-        occ_total = sum(probas.values())
-        occ_cum = 0
-        cutoff = random.random() * occ_total
-        for w, p in probas.items():
-            occ_cum += p
-            if occ_cum >= cutoff:
-                word.append(w)
-                break
-
-    word = word[depth:-1]
-
-    return word
-
+    return Occurences.from_expressions(expressions, depth)
 
 
 @click.group()
@@ -193,9 +257,9 @@ def proc(input, output, depth, sentences, verbose):
         occ = preproc_sentences(input, depth, verbose)
     else:
         occ = preproc_words(input, depth, verbose)
-    print("Generated with", bifurcations(occ), "bifurcations.")
+    print("Generated with", occ.bifurcations(), "bifurcations.")
 
-    lines = save_occ(occ, output)
+    lines = occ.save(output)
     print(lines, "lines written.")
 
 
@@ -205,14 +269,9 @@ def proc(input, output, depth, sentences, verbose):
 def gen_cmd(probas, count):
     """Generate random words/sentences from a proc file."""
 
-    occ = load_preproc(probas)
+    occ = Occurences.load(probas)
     for i in range(count):
-        w = gen(occ)
-        if all(len(t) == 1 for t in w):
-            sep = ""
-        else:
-            sep = " "
-        print(sep.join(w).capitalize())
+        print(occ.gen())
 
 
 if __name__ == "__main__":
