@@ -70,6 +70,6 @@ in
     buildInputs = [
       customPython
       xdotool
-      languagetool
+      # languagetool
     ];
   }
